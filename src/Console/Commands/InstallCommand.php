@@ -315,6 +315,7 @@ class InstallCommand extends Command
             $this->ensureDirectoryExists(app_path('Notifications/Auth'));
             $this->copyFile('app/Notifications/Auth/ResetPasswordNotification.php', app_path('Notifications/Auth/ResetPasswordNotification.php'));
             $this->copyFile('app/Notifications/Auth/VerifyEmailNotification.php', app_path('Notifications/Auth/VerifyEmailNotification.php'));
+            $this->copyFile('app/Notifications/Auth/WelcomeNotification.php', app_path('Notifications/Auth/WelcomeNotification.php'));
 
             // Mail views
             $this->ensureDirectoryExists(resource_path('views/vendor/mail/html/themes'));

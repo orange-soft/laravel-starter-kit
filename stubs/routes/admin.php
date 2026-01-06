@@ -10,5 +10,7 @@ Route::middleware(['auth', 'password.not_temporary'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
 
-    Route::resource('users', UserController::class)->except(['show']);
+    Route::middleware(['role:super-admin|admin'])->group(function () {
+        Route::resource('users', UserController::class)->except(['show']);
+    });
 });

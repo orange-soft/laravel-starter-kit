@@ -11,6 +11,18 @@ class UserUpdateRequest extends FormRequest
 {
     public function authorize(): bool
     {
+        $currentUser = $this->user();
+        $targetUser = $this->route('user');
+
+        if (! $currentUser->hasAnyRole([RoleName::SuperAdmin->value, RoleName::Admin->value])) {
+            return false;
+        }
+
+        // Only super-admins can edit super-admins
+        if ($targetUser->hasRole(RoleName::SuperAdmin->value) && ! $currentUser->hasRole(RoleName::SuperAdmin->value)) {
+            return false;
+        }
+
         return true;
     }
 

@@ -2,6 +2,8 @@
 
 use App\Enums\RoleName;
 use App\Models\User;
+use App\Notifications\Auth\WelcomeNotification;
+use Illuminate\Support\Facades\Notification;
 use Spatie\Permission\Models\Role;
 
 beforeEach(function () {
@@ -75,6 +77,8 @@ describe('Create User', function () {
     });
 
     it('can create a new user', function () {
+        Notification::fake();
+
         $this->actingAs($this->admin)
             ->post(route('users.store'), [
                 'name' => 'New User',
@@ -89,6 +93,42 @@ describe('Create User', function () {
         expect($user->name)->toBe('New User');
         expect($user->must_change_password)->toBeTrue();
         expect($user->hasRole($this->firstRole))->toBeTrue();
+
+        Notification::assertSentTo($user, WelcomeNotification::class);
+    });
+
+    it('sends welcome notification with temporary password when creating user', function () {
+        Notification::fake();
+
+        $this->actingAs($this->admin)
+            ->post(route('users.store'), [
+                'name' => 'Welcome Test User',
+                'email' => 'welcometest@example.com',
+                'role' => $this->firstRole,
+            ]);
+
+        $user = User::where('email', 'welcometest@example.com')->first();
+
+        Notification::assertSentTo($user, WelcomeNotification::class, function ($notification) {
+            // Verify the notification contains a temporary password (12 chars)
+            return strlen($notification->temporaryPassword) === 12;
+        });
+    });
+
+    it('sends welcome notification synchronously when queue config is disabled', function () {
+        Notification::fake();
+        config(['os.notifications.queue' => false]);
+
+        $this->actingAs($this->admin)
+            ->post(route('users.store'), [
+                'name' => 'Sync Test User',
+                'email' => 'synctest@example.com',
+                'role' => $this->firstRole,
+            ]);
+
+        $user = User::where('email', 'synctest@example.com')->first();
+
+        Notification::assertSentTo($user, WelcomeNotification::class);
     });
 
     it('validates required fields', function () {

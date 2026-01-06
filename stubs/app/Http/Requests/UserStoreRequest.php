@@ -4,7 +4,9 @@ namespace App\Http\Requests;
 
 use App\Enums\RoleName;
 use App\Models\User;
+use App\Notifications\Auth\WelcomeNotification;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -12,7 +14,7 @@ class UserStoreRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return $this->user()->hasAnyRole([RoleName::SuperAdmin->value, RoleName::Admin->value]);
     }
 
     public function rules(): array
@@ -31,14 +33,19 @@ class UserStoreRequest extends FormRequest
         $user = User::create([
             'name' => $this->name,
             'email' => $this->email,
-            'password' => $tempPassword,
+            'password' => Hash::make($tempPassword),
             'must_change_password' => true,
         ]);
 
         $user->assignRole($this->role);
 
-        // TODO: Send email with temporary password
-        // $user->notify(new WelcomeNotification($tempPassword));
+        $notification = new WelcomeNotification($tempPassword);
+
+        if (config('os.notifications.queue', false)) {
+            $user->notify($notification);
+        } else {
+            $user->notifyNow($notification);
+        }
 
         return $user;
     }

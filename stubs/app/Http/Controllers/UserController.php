@@ -80,8 +80,20 @@ class UserController extends Controller
 
     public function destroy(User $user): RedirectResponse
     {
-        if ($user->id === auth()->id()) {
+        $currentUser = auth()->user();
+
+        if ($user->id === $currentUser->id) {
             return $this->redirectToIndex('users.index', 'You cannot delete yourself.', 'error');
+        }
+
+        // Check if current user has permission to delete users
+        if (! $currentUser->hasAnyRole([RoleName::SuperAdmin->value, RoleName::Admin->value])) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        // Only super-admins can delete super-admins
+        if ($user->hasRole(RoleName::SuperAdmin->value) && ! $currentUser->hasRole(RoleName::SuperAdmin->value)) {
+            return $this->redirectToIndex('users.index', 'You cannot delete a super admin.', 'error');
         }
 
         $user->delete();

@@ -3,6 +3,7 @@
 use App\Models\User;
 use App\Notifications\Auth\ResetPasswordNotification;
 use App\Notifications\Auth\VerifyEmailNotification;
+use App\Notifications\Auth\WelcomeNotification;
 use Illuminate\Support\Facades\Notification;
 
 describe('Reset Password Notification', function () {
@@ -82,5 +83,74 @@ describe('User Notification Methods', function () {
         $user->sendEmailVerificationNotification();
 
         Notification::assertSentTo($user, VerifyEmailNotification::class);
+    });
+});
+
+describe('Welcome Notification', function () {
+    it('can be sent to user', function () {
+        Notification::fake();
+
+        $user = User::factory()->create();
+        $tempPassword = 'temp-password-123';
+
+        $user->notify(new WelcomeNotification($tempPassword));
+
+        Notification::assertSentTo($user, WelcomeNotification::class);
+    });
+
+    it('contains temporary password', function () {
+        $user = User::factory()->create(['name' => 'John Doe']);
+        $tempPassword = 'temp-password-123';
+
+        $notification = new WelcomeNotification($tempPassword);
+        $mailMessage = $notification->toMail($user);
+
+        expect($mailMessage->introLines)->toContain('Your temporary password is: **temp-password-123**');
+    });
+
+    it('contains login link', function () {
+        $user = User::factory()->create();
+        $tempPassword = 'temp-password-123';
+
+        $notification = new WelcomeNotification($tempPassword);
+        $mailMessage = $notification->toMail($user);
+
+        expect($mailMessage->actionUrl)->toContain('login');
+    });
+
+    it('greets user by name', function () {
+        $user = User::factory()->create(['name' => 'Jane Smith']);
+        $tempPassword = 'temp-password-123';
+
+        $notification = new WelcomeNotification($tempPassword);
+        $mailMessage = $notification->toMail($user);
+
+        expect($mailMessage->greeting)->toBe('Hello Jane Smith!');
+    });
+
+    it('has correct subject', function () {
+        $user = User::factory()->create();
+        $tempPassword = 'temp-password-123';
+
+        $notification = new WelcomeNotification($tempPassword);
+        $mailMessage = $notification->toMail($user);
+
+        expect($mailMessage->subject)->toContain('Welcome to');
+    });
+
+    it('is queued by default', function () {
+        $notification = new WelcomeNotification('temp-password-123');
+
+        expect($notification)->toBeInstanceOf(\Illuminate\Contracts\Queue\ShouldQueue::class);
+    });
+
+    it('informs user about password change requirement', function () {
+        $user = User::factory()->create();
+        $tempPassword = 'temp-password-123';
+
+        $notification = new WelcomeNotification($tempPassword);
+        $mailMessage = $notification->toMail($user);
+
+        expect($mailMessage->introLines)->toContain('You will be required to change your password upon first login.');
     });
 });

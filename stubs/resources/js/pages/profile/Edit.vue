@@ -8,12 +8,12 @@
           Update your account's profile information and email address.
         </p>
 
-        <Form v-bind="profileUpdate.form()" class="space-y-6">
+        <form class="space-y-6" @submit.prevent="updateProfile">
           <div>
             <label for="name" class="block font-body-small font-medium text-surface-700 mb-1">
               Name
             </label>
-            <InputText id="name" v-model="profileForm.name" name="name" fluid
+            <InputText id="name" v-model="profileForm.name" fluid
               :invalid="!!profileForm.errors.name" />
             <FormError :message="profileForm.errors.name" />
           </div>
@@ -22,7 +22,7 @@
             <label for="email" class="block font-body-small font-medium text-surface-700 mb-1">
               Email
             </label>
-            <InputText id="email" v-model="profileForm.email" type="email" name="email" fluid
+            <InputText id="email" v-model="profileForm.email" type="email" fluid
               :invalid="!!profileForm.errors.email" />
             <FormError :message="profileForm.errors.email" />
           </div>
@@ -30,7 +30,7 @@
           <div>
             <Button type="submit" label="Save" :loading="profileForm.processing" />
           </div>
-        </Form>
+        </form>
       </div>
 
       <!-- Update Password -->
@@ -47,7 +47,7 @@
               Current Password
             </label>
             <Password id="current_password" v-model="passwordForm.current_password"
-              name="current_password" :feedback="false" fluid toggleMask
+              :feedback="false" fluid toggleMask
               :invalid="!!passwordForm.errors.current_password" />
             <FormError :message="passwordForm.errors.current_password" />
           </div>
@@ -56,7 +56,7 @@
             <label for="new_password" class="block font-body-small font-medium text-surface-700 mb-1">
               New Password
             </label>
-            <Password id="new_password" v-model="passwordForm.password" name="password"
+            <Password id="new_password" v-model="passwordForm.password"
               :feedback="true" fluid toggleMask :invalid="!!passwordForm.errors.password" />
             <FormError :message="passwordForm.errors.password" />
           </div>
@@ -67,7 +67,7 @@
               Confirm Password
             </label>
             <Password id="password_confirmation" v-model="passwordForm.password_confirmation"
-              name="password_confirmation" :feedback="false" fluid toggleMask />
+              :feedback="false" fluid toggleMask />
           </div>
 
           <div>
@@ -83,7 +83,7 @@
 import FormError from '@/components/FormError.vue';
 import AdminLayout from '@/layouts/AdminLayout.vue';
 import {update as profileUpdate} from '@/actions/App/Http/Controllers/ProfileController';
-import {Form, useForm} from '@inertiajs/vue3';
+import {useForm} from '@inertiajs/vue3';
 import {Button, InputText, Password} from 'primevue';
 
 const props = defineProps({
@@ -105,6 +105,10 @@ const passwordForm = useForm({
   password: '',
   password_confirmation: '',
 });
+
+function updateProfile() {
+  profileForm.put(profileUpdate.url());
+}
 
 function updatePassword() {
   passwordForm.put(profileUpdate.url(), {

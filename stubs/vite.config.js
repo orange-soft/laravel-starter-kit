@@ -27,6 +27,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(__dirname, 'resources/js'),
+      '@fonts': resolve(__dirname, 'public/fonts'),
     },
   },
   server: {

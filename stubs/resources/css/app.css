@@ -1,0 +1,246 @@
+@import 'tailwindcss';
+@import 'tailwindcss-primeui';
+@import 'primeicons/primeicons.css';
+@import './fonts.css';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+@source '../**/*.vue';
+
+@theme {
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-heading: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+}
+
+@theme {
+    /* Breakpoints */
+    --breakpoint-xs: 428px;
+    --breakpoint-sm: 640px;
+    --breakpoint-md: 768px;
+    --breakpoint-lg: 1024px;
+    --breakpoint-xl: 1280px;
+    --breakpoint-2xl: 1440px;
+    --breakpoint-3xl: 1800px;
+
+    /* Font weight definitions only - sizes defined below */
+    --font-weight-display-1: 700;
+    --font-weight-display-2: 700;
+    --font-weight-display-3: 700;
+    --font-weight-display-4: 700;
+    --font-weight-display-5: 700;
+    --font-weight-display-6: 400;
+    --font-weight-display-default: 400;
+    --font-weight-display-small: 400;
+    --font-weight-display-caption: 400;
+}
+
+@layer base {
+    /* Compact admin UI base - 14px instead of browser default 16px */
+    html {
+        font-size: 14px;
+    }
+}
+
+/* Font sizes - Mobile first, scales with accessibility settings */
+/* Base font is 14px for compact admin UI (see html rule in @layer base) */
+/* These are outside @theme so they respond to body font-size changes */
+:root {
+    --font-size-display-1: 2rem;
+    --line-height-display-1: normal;
+
+    --font-size-display-2: 1.75rem;
+    --line-height-display-2: normal;
+
+    --font-size-display-3: 1.5rem;
+    --line-height-display-3: normal;
+
+    --font-size-display-4: 1.25rem;
+    --line-height-display-4: normal;
+
+    --font-size-display-5: 1.125rem;
+    --line-height-display-5: normal;
+
+    --font-size-display-6: 1.125rem;
+    --line-height-display-6: normal;
+
+    --font-size-display-default: 1rem;
+    --line-height-display-default: normal;
+
+    --font-size-display-small: 0.875rem;
+    --line-height-display-small: normal;
+
+    --font-size-display-caption: 0.75rem;
+    --line-height-display-caption: normal;
+}
+
+/* Responsive Font Sizes - Larger screens get bigger text */
+/* Computed pixels based on 14px root font-size */
+@media (min-width: 768px) {
+    :root {
+        /* Tablet and up */
+        --font-size-display-1: 2.5rem;
+        --font-size-display-2: 2.125rem;
+        --font-size-display-3: 1.75rem;
+        --font-size-display-4: 1.5rem;
+        --font-size-display-5: 1.25rem;
+        --font-size-display-6: 1.25rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    :root {
+        /* Desktop and up */
+        --font-size-display-1: 3rem;
+        --font-size-display-2: 2.5rem;
+        --font-size-display-3: 2.125rem;
+        --font-size-display-4: 1.75rem;
+        --font-size-display-5: 1.5rem;
+        --font-size-display-6: 1.25rem;
+    }
+}
+
+/* Create utility classes for custom font sizes */
+@utility container {
+    margin-inline: auto;
+    /* Centers the container */
+    padding-inline: 1rem;
+    /* Default horizontal padding */
+    @media (min-width: theme(--breakpoint-sm)) {
+        padding-inline: 2rem;
+        /* Responsive padding for small screens and up */
+    }
+
+    /* Add more responsive padding as needed for other breakpoints */
+    @media (min-width: theme(--breakpoint-lg)) {
+        padding-inline: 4rem;
+    }
+}
+
+@utility font-heading-1 {
+    font-family: var(--font-heading), sans-serif;
+    font-size: var(--font-size-display-1);
+    line-height: var(--line-height-display-1);
+    font-weight: var(--font-weight-display-1);
+}
+
+@utility font-heading-2 {
+    font-family: var(--font-heading), sans-serif;
+    font-size: var(--font-size-display-2);
+    line-height: var(--line-height-display-2);
+    font-weight: var(--font-weight-display-2);
+}
+
+@utility font-heading-3 {
+    font-family: var(--font-heading), sans-serif;
+    font-size: var(--font-size-display-3);
+    line-height: var(--line-height-display-3);
+    font-weight: var(--font-weight-display-3);
+}
+
+@utility font-heading-4 {
+    font-family: var(--font-heading), sans-serif;
+    font-size: var(--font-size-display-4);
+    line-height: var(--line-height-display-4);
+    font-weight: var(--font-weight-display-4);
+}
+
+@utility font-heading-5 {
+    font-family: var(--font-heading), sans-serif;
+    font-size: var(--font-size-display-5);
+    line-height: var(--line-height-display-5);
+    font-weight: var(--font-weight-display-5);
+}
+
+@utility font-body-large {
+    font-size: var(--font-size-display-6);
+    line-height: var(--line-height-display-6);
+    font-weight: var(--font-weight-display-6);
+}
+
+@utility font-body-default {
+    font-size: var(--font-size-display-default);
+    line-height: var(--line-height-display-default);
+    font-weight: var(--font-weight-display-default);
+}
+
+@utility font-body-small {
+    font-size: var(--font-size-display-small);
+    line-height: var(--line-height-display-small);
+    font-weight: var(--font-weight-display-small);
+}
+
+@utility font-caption {
+    font-size: var(--font-size-display-caption);
+    line-height: var(--line-height-display-caption);
+    font-weight: var(--font-weight-display-caption);
+}
+
+/* Base styles */
+@layer base {
+    h1, h2, h3, h4, h5, h6 {
+        font-family: var(--font-heading), sans-serif;
+    }
+
+    h1 {
+        font-size: var(--font-size-display-1);
+        line-height: var(--line-height-display-1);
+        font-weight: var(--font-weight-display-1);
+    }
+
+    h2 {
+        font-size: var(--font-size-display-2);
+        line-height: var(--line-height-display-2);
+        font-weight: var(--font-weight-display-2);
+    }
+
+    h3 {
+        font-size: var(--font-size-display-3);
+        line-height: var(--line-height-display-3);
+        font-weight: var(--font-weight-display-3);
+    }
+
+    h4 {
+        font-size: var(--font-size-display-4);
+        line-height: var(--line-height-display-4);
+        font-weight: var(--font-weight-display-4);
+    }
+
+    h5 {
+        font-size: var(--font-size-display-5);
+        line-height: var(--line-height-display-5);
+        font-weight: var(--font-weight-display-5);
+    }
+
+    h6 {
+        font-size: var(--font-size-display-6);
+        line-height: var(--line-height-display-6);
+        font-weight: var(--font-weight-display-6);
+    }
+
+    hr {
+        @apply my-6;
+    }
+
+    ol {
+        @apply pl-8;
+        list-style: revert;
+    }
+
+    ul {
+        @apply pl-8;
+        list-style: revert;
+    }
+
+    body {
+        font-size: var(--font-size-display-default);
+        line-height: var(--line-height-display-default);
+        font-weight: var(--font-weight-display-default);
+    }
+
+    a {
+        @apply text-primary;
+    }
+}

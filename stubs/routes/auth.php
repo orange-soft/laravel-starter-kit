@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('guest')->group(function () {
     Route::get('login', [LoginController::class, 'create'])->name('login');
     Route::post('login', [LoginController::class, 'store'])
-        ->middleware([HandlePrecognitiveRequests::class, 'throttle:5,1']);
+        ->middleware(HandlePrecognitiveRequests::class);
 
     Route::get('forgot-password', [ForgotPasswordController::class, 'create'])->name('password.request');
     Route::post('forgot-password', [ForgotPasswordController::class, 'store'])

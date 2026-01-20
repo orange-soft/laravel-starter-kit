@@ -9,9 +9,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->uuid('uuid')->after('id')->unique();
-            $table->boolean('must_change_password')->default(false)->after('password');
-            $table->softDeletes();
+            if (! Schema::hasColumn('users', 'uuid')) {
+                $table->uuid('uuid')->after('id')->unique();
+            }
+            if (! Schema::hasColumn('users', 'must_change_password')) {
+                $table->boolean('must_change_password')->default(false)->after('password');
+            }
+            if (! Schema::hasColumn('users', 'deleted_at')) {
+                $table->softDeletes();
+            }
         });
     }
 

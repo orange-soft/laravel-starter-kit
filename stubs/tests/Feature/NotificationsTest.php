@@ -151,6 +151,6 @@ describe('Welcome Notification', function () {
         $notification = new WelcomeNotification($tempPassword);
         $mailMessage = $notification->toMail($user);
 
-        expect($mailMessage->introLines)->toContain('You will be required to change your password upon first login.');
+        expect($mailMessage->outroLines)->toContain('You will be required to change your password upon first login.');
     });
 });

@@ -70,12 +70,16 @@ class InstallCommand extends Command
 
         $this->components->info('OrangeSoft Laravel Starter Kit installed successfully!');
         $this->newLine();
+        $this->components->warn('Next steps:');
         $this->components->bulletList([
-            'Run <comment>npm install</comment> to install dependencies',
-            'Run <comment>php artisan migrate</comment> to run migrations',
+            'Run <comment>npm install</comment> to install frontend dependencies',
+            'Run <comment>npm run build</comment> to build frontend assets',
+            'Run <comment>php artisan migrate</comment> to add uuid, roles & permissions tables',
+            'Set <comment>DEFAULT_USER_PASSWORD</comment> in your .env file',
             'Run <comment>php artisan db:seed --class=RoleSeeder</comment> to seed roles',
             'Run <comment>php artisan db:seed --class=AdminUserSeeder</comment> to create admin user',
             'Run <comment>composer dev</comment> to start development server',
+            'Run <comment>composer test</comment> to run tests (browser tests excluded)',
         ]);
 
         return self::SUCCESS;
@@ -97,7 +101,7 @@ class InstallCommand extends Command
 
     protected function installStack(): void
     {
-        $this->components->task('Installing stack (Inertia, Vue, Tailwind, PrimeVue)', function () {
+        $this->components->task('Configuring stack (Inertia, Vue, Tailwind, PrimeVue)', function () {
             // Install composer packages
             $this->requireComposerPackages([
                 'inertiajs/inertia-laravel:^2.0',
@@ -169,7 +173,7 @@ class InstallCommand extends Command
 
     protected function installLayouts(): void
     {
-        $this->components->task('Installing layouts and components', function () {
+        $this->components->task('Publishing layouts and components', function () {
             // Layouts
             $this->ensureDirectoryExists(resource_path('js/layouts'));
             $this->copyFile('resources/js/layouts/AuthLayout.vue', resource_path('js/layouts/AuthLayout.vue'));
@@ -197,7 +201,7 @@ class InstallCommand extends Command
 
     protected function installAuth(): void
     {
-        $this->components->task('Installing authentication', function () {
+        $this->components->task('Publishing authentication', function () {
             // Controllers
             $this->ensureDirectoryExists(app_path('Http/Controllers/Auth'));
             $this->copyFile('app/Http/Controllers/Auth/LoginController.php', app_path('Http/Controllers/Auth/LoginController.php'));
@@ -234,7 +238,7 @@ class InstallCommand extends Command
 
     protected function installUserManagement(): void
     {
-        $this->components->task('Installing user management', function () {
+        $this->components->task('Publishing user management', function () {
             // Controller traits
             $this->ensureDirectoryExists(app_path('Http/Controllers/Traits'));
             $this->copyFile('app/Http/Controllers/Traits/RedirectsToStoredIndex.php', app_path('Http/Controllers/Traits/RedirectsToStoredIndex.php'));
@@ -269,7 +273,7 @@ class InstallCommand extends Command
 
     protected function installRoles(): void
     {
-        $this->components->task('Installing roles and permissions', function () {
+        $this->components->task('Publishing roles and permissions', function () {
             // Enum
             $this->ensureDirectoryExists(app_path('Enums'));
             $this->copyFile('app/Enums/RoleName.php', app_path('Enums/RoleName.php'));
@@ -302,7 +306,7 @@ class InstallCommand extends Command
 
     protected function installMail(): void
     {
-        $this->components->task('Installing mail templates and notifications', function () {
+        $this->components->task('Publishing mail templates and notifications', function () {
             // Base Mailable class
             $this->ensureDirectoryExists(app_path('Mail'));
             $this->copyFile('app/Mail/AppMailable.php', app_path('Mail/AppMailable.php'));
@@ -340,7 +344,12 @@ class InstallCommand extends Command
 
     protected function installTests(): void
     {
-        $this->components->task('Installing tests', function () {
+        $this->components->task('Publishing tests', function () {
+            // Test configuration files
+            $this->copyFile('phpunit.xml', base_path('phpunit.xml'));
+            $this->copyFile('tests/Pest.php', base_path('tests/Pest.php'));
+            $this->copyFile('tests/TestCase.php', base_path('tests/TestCase.php'));
+
             // Feature tests - Auth
             $this->ensureDirectoryExists(base_path('tests/Feature/Auth'));
             $this->copyFile('tests/Feature/Auth/LoginTest.php', base_path('tests/Feature/Auth/LoginTest.php'));
@@ -382,7 +391,7 @@ class InstallCommand extends Command
 
     protected function installMedia(): void
     {
-        $this->components->task('Installing media library', function () {
+        $this->components->task('Configuring media library', function () {
             $this->requireComposerPackages(['spatie/laravel-medialibrary:^11.0']);
 
             // Publish config and migrations
@@ -399,7 +408,7 @@ class InstallCommand extends Command
 
     protected function installBackup(): void
     {
-        $this->components->task('Installing backup', function () {
+        $this->components->task('Configuring backup', function () {
             $this->requireComposerPackages(['spatie/laravel-backup:^9.0']);
 
             // Publish config
@@ -415,7 +424,7 @@ class InstallCommand extends Command
 
     protected function installActivityLog(): void
     {
-        $this->components->task('Installing activity log', function () {
+        $this->components->task('Configuring activity log', function () {
             $this->requireComposerPackages(['spatie/laravel-activitylog:^4.0']);
 
             // Publish config and migrations
@@ -493,6 +502,16 @@ class InstallCommand extends Command
         $composerJson['scripts']['dev'] = [
             'Composer\\Config::disableProcessTimeout',
             'npx concurrently -c "#93c5fd,#c4b5fd,#fb7185,#fdba74" "php artisan serve" "php artisan queue:listen --tries=1" "php artisan pail --timeout=0" "npm run dev" --names=server,queue,logs,vite --kill-others',
+        ];
+
+        $composerJson['scripts']['test'] = [
+            '@php artisan config:clear --ansi',
+            '@php artisan test --exclude-group=browser --stop-on-defect',
+        ];
+
+        $composerJson['scripts']['test:browser'] = [
+            '@php artisan config:clear --ansi',
+            '@php artisan test --group=browser --stop-on-defect',
         ];
 
         file_put_contents(

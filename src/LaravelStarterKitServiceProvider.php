@@ -3,6 +3,7 @@
 namespace OrangeSoft\LaravelStarterKit;
 
 use Illuminate\Support\ServiceProvider;
+use OrangeSoft\LaravelStarterKit\Console\Commands\HealthCheckCommand;
 use OrangeSoft\LaravelStarterKit\Console\Commands\InstallCommand;
 
 class LaravelStarterKitServiceProvider extends ServiceProvider
@@ -17,6 +18,7 @@ class LaravelStarterKitServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 InstallCommand::class,
+                HealthCheckCommand::class,
             ]);
         }
     }

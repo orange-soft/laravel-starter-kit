@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Traits\HasTemporaryPassword;
 use App\Models\Traits\HasUuidRouteKey;
 use App\Notifications\Auth\ResetPasswordNotification;
 use App\Notifications\Auth\VerifyEmailNotification;
@@ -14,13 +15,12 @@ use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
-    use HasFactory, HasRoles, HasUuidRouteKey, Notifiable, SoftDeletes;
+    use HasFactory, HasRoles, HasTemporaryPassword, HasUuidRouteKey, Notifiable, SoftDeletes;
 
     protected $fillable = [
         'name',
         'email',
         'password',
-        'must_change_password',
     ];
 
     protected $hidden = [
@@ -33,7 +33,6 @@ class User extends Authenticatable implements MustVerifyEmail
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'must_change_password' => 'boolean',
         ];
     }
 

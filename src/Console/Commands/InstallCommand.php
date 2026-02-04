@@ -27,6 +27,24 @@ class InstallCommand extends Command
         'activitylog' => 'Activity logging (spatie/laravel-activitylog)',
     ];
 
+    /**
+     * Files that exist in a fresh Laravel project and require manual amendments.
+     * These are never overwritten - instead, instructions are shown.
+     */
+    protected array $protectedFiles = [
+        'app/Models/User.php',
+        'bootstrap/app.php',
+        'tests/Pest.php',
+        'phpunit.xml',
+        'vite.config.js',
+        'app/Enums/RoleName.php',
+    ];
+
+    /**
+     * Track skipped protected files during installation.
+     */
+    protected array $skippedProtectedFiles = [];
+
     public function __construct()
     {
         parent::__construct();
@@ -69,20 +87,295 @@ class InstallCommand extends Command
         $this->runPostInstall();
 
         $this->components->info('OrangeSoft Laravel Starter Kit installed successfully!');
+
+        // Show manual integration steps FIRST (before running any commands)
+        [$hasManualSteps, $nextStep] = $this->showProtectedFileInstructions();
+
+        // Then show the commands to run
         $this->newLine();
-        $this->components->warn('Next steps:');
-        $this->components->bulletList([
-            'Run <comment>npm install</comment> to install frontend dependencies',
-            'Run <comment>npm run build</comment> to build frontend assets',
-            'Run <comment>php artisan migrate</comment> to add uuid, roles & permissions tables',
-            'Set <comment>DEFAULT_USER_PASSWORD</comment> in your .env file',
-            'Run <comment>php artisan db:seed --class=RoleSeeder</comment> to seed roles',
-            'Run <comment>php artisan db:seed --class=AdminUserSeeder</comment> to create admin user',
-            'Run <comment>composer dev</comment> to start development server',
-            'Run <comment>composer test</comment> to run tests (browser tests excluded)',
-        ]);
+        if ($hasManualSteps) {
+            $this->components->warn('After completing the above, run these commands in order:');
+        } else {
+            $this->components->warn('Run these commands in order:');
+        }
+        $this->newLine();
+
+        $this->line("  <fg=gray>{$nextStep}.</> <comment>npm install && npm run build</comment>");
+        $nextStep++;
+        $this->line("  <fg=gray>{$nextStep}.</> <comment>php artisan migrate && php artisan db:seed --class=RoleSeeder && php artisan db:seed --class=AdminUserSeeder</comment>");
+        $nextStep++;
+        $this->line("  <fg=gray>{$nextStep}.</> <comment>composer test</comment>");
+
+        // Auto-run health check to show integration status
+        $this->newLine();
+        $this->call('os:starter:check');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Show instructions for protected files that require manual integration.
+     *
+     * @return array{bool, int} [hasManualSteps, nextStepNumber]
+     */
+    protected function showProtectedFileInstructions(): array
+    {
+        $stepNumber = 1;
+        $hasManualSteps = false;
+
+        // Check User model
+        $userModelPath = app_path('Models/User.php');
+        if (file_exists($userModelPath)) {
+            $userModelContent = file_get_contents($userModelPath);
+            $needsUserModelStep = false;
+            $missingTraits = [];
+            $missingInterface = ! str_contains($userModelContent, 'implements MustVerifyEmail');
+
+            if (! str_contains($userModelContent, 'HasUuidRouteKey')) {
+                $missingTraits[] = 'HasUuidRouteKey';
+            }
+            if (! str_contains($userModelContent, 'HasTemporaryPassword')) {
+                $missingTraits[] = 'HasTemporaryPassword';
+            }
+            if (! str_contains($userModelContent, 'HasRoles')) {
+                $missingTraits[] = 'HasRoles';
+            }
+            if (! str_contains($userModelContent, 'SoftDeletes')) {
+                $missingTraits[] = 'SoftDeletes';
+            }
+
+            // Check for notification method overrides
+            $missingMethods = [];
+            if (! str_contains($userModelContent, 'sendPasswordResetNotification')) {
+                $missingMethods[] = 'sendPasswordResetNotification';
+            }
+            if (! str_contains($userModelContent, 'sendEmailVerificationNotification')) {
+                $missingMethods[] = 'sendEmailVerificationNotification';
+            }
+
+            if (! empty($missingTraits) || $missingInterface || ! empty($missingMethods)) {
+                $hasManualSteps = true;
+                $this->newLine();
+                $this->components->error("Step {$stepNumber}: Update your User model (app/Models/User.php)");
+                $stepNumber++;
+            }
+
+            if (! empty($missingTraits) || $missingInterface) {
+                $this->newLine();
+                $this->line('  <fg=yellow>Add these imports at the top of the file:</>');
+                $this->line('  <fg=gray>use App\Models\Traits\HasTemporaryPassword;</>');
+                $this->line('  <fg=gray>use App\Models\Traits\HasUuidRouteKey;</>');
+                $this->line('  <fg=gray>use Illuminate\Contracts\Auth\MustVerifyEmail;</>');
+                $this->line('  <fg=gray>use Illuminate\Database\Eloquent\SoftDeletes;</>');
+                $this->line('  <fg=gray>use Spatie\Permission\Traits\HasRoles;</>');
+                $this->newLine();
+                $this->line('  <fg=yellow>Implement interface and add traits:</>');
+                $this->line('  <fg=gray>class User extends Authenticatable implements MustVerifyEmail</>');
+                $this->line('  <fg=gray>{</>');
+                $this->line('  <fg=gray>    use HasRoles, HasTemporaryPassword, HasUuidRouteKey, SoftDeletes;</>');
+            }
+
+            if (! empty($missingMethods)) {
+                $this->newLine();
+                $this->line('  <fg=yellow>Add notification imports:</>');
+                $this->line('  <fg=gray>use App\Notifications\Auth\ResetPasswordNotification;</>');
+                $this->line('  <fg=gray>use App\Notifications\Auth\VerifyEmailNotification;</>');
+                $this->newLine();
+                $this->line('  <fg=yellow>Add these methods to use custom notifications:</>');
+                $this->line('  <fg=gray>public function sendPasswordResetNotification($token): void</>');
+                $this->line('  <fg=gray>{</>');
+                $this->line('  <fg=gray>    $this->notify(new ResetPasswordNotification($token));</>');
+                $this->line('  <fg=gray>}</>');
+                $this->newLine();
+                $this->line('  <fg=gray>public function sendEmailVerificationNotification(): void</>');
+                $this->line('  <fg=gray>{</>');
+                $this->line('  <fg=gray>    $this->notify(new VerifyEmailNotification);</>');
+                $this->line('  <fg=gray>}</>');
+            }
+        }
+
+        // Check bootstrap/app.php for middleware
+        $bootstrapPath = base_path('bootstrap/app.php');
+        if (file_exists($bootstrapPath)) {
+            $bootstrapContent = file_get_contents($bootstrapPath);
+
+            $missingMiddleware = [];
+            if (! str_contains($bootstrapContent, 'HandleInertiaRequests')) {
+                $missingMiddleware[] = 'HandleInertiaRequests';
+            }
+            if (! str_contains($bootstrapContent, 'HandleNavigationContext')) {
+                $missingMiddleware[] = 'HandleNavigationContext';
+            }
+            if (! str_contains($bootstrapContent, 'password.not_temporary')) {
+                $missingMiddleware[] = 'password.not_temporary';
+            }
+            if (! str_contains($bootstrapContent, "role'") && ! str_contains($bootstrapContent, 'RoleMiddleware')) {
+                $missingMiddleware[] = 'Spatie role middleware';
+            }
+
+            if (! empty($missingMiddleware)) {
+                $hasManualSteps = true;
+                $this->newLine();
+                $this->components->error("Step {$stepNumber}: Configure middleware (bootstrap/app.php)");
+                $stepNumber++;
+                $this->newLine();
+                $this->line('  <fg=yellow>Add to your withMiddleware() callback:</>');
+                $this->newLine();
+                $this->line('  <fg=gray>$middleware->web(append: [</>');
+                $this->line('  <fg=gray>    \App\Http\Middleware\HandleInertiaRequests::class,</>');
+                $this->line('  <fg=gray>    \App\Http\Middleware\HandleNavigationContext::class,</>');
+                $this->line('  <fg=gray>]);</>');
+                $this->newLine();
+                $this->line('  <fg=gray>$middleware->alias([</>');
+                $this->line('  <fg=gray>    \'password.not_temporary\' => \App\Http\Middleware\EnsurePasswordIsNotTemporary::class,</>');
+                $this->line('  <fg=gray>    \'role\' => \Spatie\Permission\Middleware\RoleMiddleware::class,</>');
+                $this->line('  <fg=gray>    \'permission\' => \Spatie\Permission\Middleware\PermissionMiddleware::class,</>');
+                $this->line('  <fg=gray>    \'role_or_permission\' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,</>');
+                $this->line('  <fg=gray>]);</>');
+            }
+        }
+
+        // Check .env for DEFAULT_USER_PASSWORD
+        $envPath = base_path('.env');
+        if (file_exists($envPath)) {
+            $envContent = file_get_contents($envPath);
+            if (! str_contains($envContent, 'DEFAULT_USER_PASSWORD')) {
+                $hasManualSteps = true;
+                $this->newLine();
+                $this->components->error("Step {$stepNumber}: Set admin password in .env");
+                $stepNumber++;
+                $this->newLine();
+                $this->line('  <fg=yellow>Add to your .env file:</>');
+                $this->line('  <fg=gray>DEFAULT_USER_PASSWORD=your-secure-password</>');
+            }
+        }
+
+        // Check tests/Pest.php for RefreshDatabase
+        $pestPath = base_path('tests/Pest.php');
+        if (file_exists($pestPath)) {
+            $pestContent = file_get_contents($pestPath);
+            $needsPestUpdate = false;
+
+            if (! str_contains($pestContent, 'RefreshDatabase')) {
+                $needsPestUpdate = true;
+            }
+            if (! str_contains($pestContent, "group('browser')")) {
+                $needsPestUpdate = true;
+            }
+
+            if ($needsPestUpdate) {
+                $hasManualSteps = true;
+                $this->newLine();
+                $this->components->error("Step {$stepNumber}: Configure Pest for database testing (tests/Pest.php)");
+                $stepNumber++;
+                $this->newLine();
+                $this->line('  <fg=yellow>Update your pest() configuration to include RefreshDatabase:</>');
+                $this->newLine();
+                $this->line('  <fg=gray>pest()->extend(Tests\TestCase::class)</>');
+                $this->line('  <fg=gray>    ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)</>');
+                $this->line('  <fg=gray>    ->in(\'Feature\');</>');
+                $this->newLine();
+                $this->line('  <fg=yellow>Add Browser tests configuration:</>');
+                $this->newLine();
+                $this->line('  <fg=gray>pest()->extend(Tests\TestCase::class)</>');
+                $this->line('  <fg=gray>    ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)</>');
+                $this->line('  <fg=gray>    ->group(\'browser\')</>');
+                $this->line('  <fg=gray>    ->in(\'Browser\');</>');
+            }
+        }
+
+        // Check phpunit.xml for Browser testsuite
+        $phpunitPath = base_path('phpunit.xml');
+        if (file_exists($phpunitPath)) {
+            $phpunitContent = file_get_contents($phpunitPath);
+
+            if (! str_contains($phpunitContent, 'Browser')) {
+                $hasManualSteps = true;
+                $this->newLine();
+                $this->components->error("Step {$stepNumber}: Add Browser testsuite to PHPUnit (phpunit.xml)");
+                $stepNumber++;
+                $this->newLine();
+                $this->line('  <fg=yellow>Add Browser testsuite in <testsuites>:</>');
+                $this->line('  <fg=gray><testsuite name="Browser"></>');
+                $this->line('  <fg=gray>    <directory>tests/Browser</directory></>');
+                $this->line('  <fg=gray></testsuite></>');
+            }
+        }
+
+        // Check vite.config.js for Vue/Inertia config
+        $vitePath = base_path('vite.config.js');
+        if (file_exists($vitePath)) {
+            $viteContent = file_get_contents($vitePath);
+            $needsViteUpdate = false;
+
+            if (! str_contains($viteContent, '@vitejs/plugin-vue')) {
+                $needsViteUpdate = true;
+            }
+            if (! str_contains($viteContent, 'tailwindcss')) {
+                $needsViteUpdate = true;
+            }
+
+            if ($needsViteUpdate) {
+                $hasManualSteps = true;
+                $this->newLine();
+                $this->components->error("Step {$stepNumber}: Configure Vite for Vue/Inertia (vite.config.js)");
+                $stepNumber++;
+                $this->newLine();
+                $this->line('  <fg=yellow>Add imports:</>');
+                $this->line('  <fg=gray>import vue from \'@vitejs/plugin-vue\';</>');
+                $this->line('  <fg=gray>import tailwindcss from \'@tailwindcss/vite\';</>');
+                $this->line('  <fg=gray>import {wayfinder} from \'@laravel/vite-plugin-wayfinder\';</>');
+                $this->line('  <fg=gray>import {resolve} from \'path\';</>');
+                $this->newLine();
+                $this->line('  <fg=yellow>Add plugins:</>');
+                $this->line('  <fg=gray>tailwindcss(),</>');
+                $this->line('  <fg=gray>wayfinder({ formVariants: true }),</>');
+                $this->line('  <fg=gray>vue({</>');
+                $this->line('  <fg=gray>  template: { transformAssetUrls: { base: null, includeAbsolute: false } },</>');
+                $this->line('  <fg=gray>}),</>');
+                $this->newLine();
+                $this->line('  <fg=yellow>Add resolve aliases:</>');
+                $this->line('  <fg=gray>resolve: {</>');
+                $this->line('  <fg=gray>  alias: {</>');
+                $this->line('  <fg=gray>    \'@\': resolve(__dirname, \'resources/js\'),</>');
+                $this->line('  <fg=gray>    \'@fonts\': resolve(__dirname, \'public/fonts\'),</>');
+                $this->line('  <fg=gray>  },</>');
+                $this->line('  <fg=gray>},</>');
+            }
+        }
+
+        // Check RoleName.php for required roles
+        $roleNamePath = app_path('Enums/RoleName.php');
+        if (file_exists($roleNamePath)) {
+            $roleNameContent = file_get_contents($roleNamePath);
+            $missingRoles = [];
+
+            if (! str_contains($roleNameContent, 'SuperAdmin')) {
+                $missingRoles[] = 'SuperAdmin';
+            }
+            if (! str_contains($roleNameContent, 'Admin')) {
+                $missingRoles[] = 'Admin';
+            }
+
+            if (! empty($missingRoles)) {
+                $hasManualSteps = true;
+                $this->newLine();
+                $this->components->error("Step {$stepNumber}: Verify required roles (app/Enums/RoleName.php)");
+                $stepNumber++;
+                $this->newLine();
+                $this->line('  <fg=yellow>Missing required roles: ' . implode(', ', $missingRoles) . '</>');
+                $this->newLine();
+                $this->line('  <fg=yellow>The RoleName enum must include these required roles:</>');
+                $this->line('  <fg=gray>case SuperAdmin = \'super-admin\';</>');
+                $this->line('  <fg=gray>case Admin = \'admin\';</>');
+                $this->newLine();
+                $this->line('  <fg=yellow>You may add additional custom roles as needed:</>');
+                $this->line('  <fg=gray>case Customer = \'customer\';</>');
+                $this->line('  <fg=gray>case Vendor = \'vendor\';</>');
+            }
+        }
+
+        return [$hasManualSteps, $stepNumber];
     }
 
     protected function promptForFeatures(): array
@@ -282,6 +575,7 @@ class InstallCommand extends Command
             $this->ensureDirectoryExists(app_path('Models/Traits'));
             $this->copyFile('app/Models/User.php', app_path('Models/User.php'));
             $this->copyFile('app/Models/Traits/HasUuidRouteKey.php', app_path('Models/Traits/HasUuidRouteKey.php'));
+            $this->copyFile('app/Models/Traits/HasTemporaryPassword.php', app_path('Models/Traits/HasTemporaryPassword.php'));
 
             // Middleware for temp password check
             $this->copyFile('app/Http/Middleware/EnsurePasswordIsNotTemporary.php', app_path('Http/Middleware/EnsurePasswordIsNotTemporary.php'));
@@ -522,6 +816,14 @@ class InstallCommand extends Command
 
     protected function copyFile(string $stub, string $destination): void
     {
+        // Protected files are never overwritten - instructions are shown instead
+        if ($this->isProtectedFile($stub) && $this->files->exists($destination)) {
+            $this->skippedProtectedFiles[] = $stub;
+
+            return;
+        }
+
+        // Other files only overwritten with --force
         if (! $this->option('force') && $this->files->exists($destination)) {
             return;
         }
@@ -529,6 +831,11 @@ class InstallCommand extends Command
         $this->ensureDirectoryExists(dirname($destination));
 
         $this->files->copy($this->stubPath($stub), $destination);
+    }
+
+    protected function isProtectedFile(string $stub): bool
+    {
+        return in_array($stub, $this->protectedFiles, true);
     }
 
     protected function copyDirectory(string $stub, string $destination): void

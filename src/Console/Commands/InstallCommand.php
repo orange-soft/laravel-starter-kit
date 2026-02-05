@@ -31,19 +31,37 @@ class InstallCommand extends Command
      * Files that exist in a fresh Laravel project and require manual amendments.
      * These are never overwritten - instead, instructions are shown.
      */
+    /**
+     * Files that exist in a fresh Laravel project and require manual amendments.
+     */
     protected array $protectedFiles = [
         'app/Models/User.php',
         'bootstrap/app.php',
         'tests/Pest.php',
         'phpunit.xml',
         'vite.config.js',
+    ];
+
+    /**
+     * Files created by this package that users will customize.
+     * These are never overwritten, even with --force.
+     */
+    protected array $customizableFiles = [
         'app/Enums/RoleName.php',
+        'routes/admin.php',
+        'routes/auth.php',
+        'routes/dev.php',
     ];
 
     /**
      * Track skipped protected files during installation.
      */
     protected array $skippedProtectedFiles = [];
+
+    /**
+     * Track skipped customizable files during installation.
+     */
+    protected array $skippedCustomizableFiles = [];
 
     public function __construct()
     {
@@ -87,6 +105,18 @@ class InstallCommand extends Command
         $this->runPostInstall();
 
         $this->components->info('OrangeSoft Laravel Starter Kit installed successfully!');
+
+        // Show warning for skipped customizable files
+        if (! empty($this->skippedCustomizableFiles)) {
+            $this->newLine();
+            $this->components->warn('The following files were NOT overwritten to preserve your customizations:');
+            foreach ($this->skippedCustomizableFiles as $file) {
+                $this->line("  <fg=yellow>• {$file}</> <fg=gray>→ compare with {$file}.stub</>");
+            }
+            $this->newLine();
+            $this->line('  <fg=gray>To compare: </><comment>diff file file.stub</comment>');
+            $this->line('  <fg=gray>To replace: delete the original file and rename .stub file</>');
+        }
 
         // Show manual integration steps FIRST (before running any commands)
         [$hasManualSteps, $nextStep] = $this->showProtectedFileInstructions();
@@ -485,6 +515,10 @@ class InstallCommand extends Command
             $this->ensureDirectoryExists(resource_path('js/pages/dev'));
             $this->copyFile('resources/js/pages/dev/Typography.vue', resource_path('js/pages/dev/Typography.vue'));
 
+            // Dev routes (local environment only)
+            $this->copyFile('routes/dev.php', base_path('routes/dev.php'));
+            $this->installRoutes('dev');
+
             // Dashboard
             $this->copyFile('resources/js/pages/Dashboard.vue', resource_path('js/pages/Dashboard.vue'));
 
@@ -823,6 +857,15 @@ class InstallCommand extends Command
             return;
         }
 
+        // Customizable files are never overwritten, even with --force
+        // Copy fresh version to .stub file for comparison
+        if ($this->isCustomizableFile($stub) && $this->files->exists($destination)) {
+            $this->skippedCustomizableFiles[] = $stub;
+            $this->files->copy($this->stubPath($stub), $destination . '.stub');
+
+            return;
+        }
+
         // Other files only overwritten with --force
         if (! $this->option('force') && $this->files->exists($destination)) {
             return;
@@ -836,6 +879,11 @@ class InstallCommand extends Command
     protected function isProtectedFile(string $stub): bool
     {
         return in_array($stub, $this->protectedFiles, true);
+    }
+
+    protected function isCustomizableFile(string $stub): bool
+    {
+        return in_array($stub, $this->customizableFiles, true);
     }
 
     protected function copyDirectory(string $stub, string $destination): void

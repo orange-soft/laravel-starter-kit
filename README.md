@@ -24,9 +24,11 @@ After installation, follow the manual configuration steps shown in the output, t
 |-----------|---------------|------------|----------------|
 | **New files** (don't exist in fresh Laravel) | Created | Skipped | Replaced |
 | **Protected files** (exist in fresh Laravel) | Instructions shown | Instructions shown | Instructions shown |
-| **Customizable files** (e.g., RoleName.php) | Created | Skipped | Skipped |
+| **Customizable files** (e.g., RoleName.php, routes) | Created | Skipped | Skipped |
 
 **Protected files are never overwritten** - you must manually add the required code. Use `php artisan os:starter:check` to verify your configuration.
+
+**Customizable files** are never overwritten to preserve your changes. When skipped, a `.stub` file is created with the fresh version for comparison. You can add `*.stub` to your `.gitignore` if desired.
 
 ### Optional Features
 
